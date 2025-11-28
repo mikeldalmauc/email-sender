@@ -25,49 +25,42 @@ app.use(express.static('public')); // Servirá el HTML en la carpeta 'public'
 // --- FUNCIONES AUXILIARES PARA EL JSON ---
 
 // Leer contactos del disco
-// Leer contactos del disco
+// Leer contactos del disco// Leer contactos del disco (Versión Blindada)
 const getContacts = () => {
     try {
-        console.log(`📂 Intentando leer archivo: ${DATA_FILE}`);
-        
+        // 1. Si no existe el archivo, devolvemos array vacío
         if (!fs.existsSync(DATA_FILE)) {
-            console.warn("⚠️ El archivo no existe. Devolviendo array vacío.");
+            console.log("⚠️ Archivo no encontrado. Inicializando vacío.");
             return [];
         }
 
         const data = fs.readFileSync(DATA_FILE, 'utf8');
-        
-        // LOG DE DEBUG: Ver qué hemos leído exactamente
-        console.log(`📄 Contenido raw (primeros 50 chars): ${data.substring(0, 50)}...`);
 
-        if (!data) {
-            console.warn("⚠️ El archivo está vacío.");
+        // 2. Si el archivo está vacío, devolvemos array vacío
+        if (!data || data.trim() === '') {
+            console.log("⚠️ Archivo vacío.");
             return [];
         }
 
-        const parsedData = JSON.parse(data);
+        const parsed = JSON.parse(data);
 
-        // LOG DE DEBUG: Ver qué tipo de dato es
-        console.log(`🧩 Tipo de dato parseado: ${typeof parsedData}`);
-        console.log(`❓ ¿Es Array directo?: ${Array.isArray(parsedData)}`);
-
-        // CASO 1: Es la estructura { "contacts": [...] }
-        if (parsedData.contacts && Array.isArray(parsedData.contacts)) {
-            console.log(`✅ Estructura {contacts: [...]} detectada. Extrayendo ${parsedData.contacts.length} elementos.`);
-            return parsedData.contacts; // <--- AQUÍ ESTÁ LA SOLUCIÓN
+        // 3. Verificamos estructura { "contacts": [...] }
+        if (parsed.contacts && Array.isArray(parsed.contacts)) {
+            return parsed.contacts;
         }
 
-        // CASO 2: Es un Array directo [...]
-        if (Array.isArray(parsedData)) {
-            console.log(`✅ Estructura Array directa detectada.`);
-            return parsedData;
+        // 4. Verificamos estructura directa [...]
+        if (Array.isArray(parsed)) {
+            return parsed;
         }
 
-        console.error("❌ El JSON no tiene formato válido (ni array ni objeto con propiedad contacts).");
+        // 5. Si es un objeto raro pero no tiene contactos, logueamos y devolvemos vacío
+        console.error("❌ Formato JSON desconocido:", parsed);
         return [];
 
     } catch (error) {
-        console.error("❌ Error CRÍTICO leyendo contactos:", error);
+        console.error("❌ Error leyendo/parseando contactos:", error.message);
+        // EN CASO DE ERROR, SIEMPRE DEVOLVEMOS ARRAY VACÍO
         return [];
     }
 };
@@ -112,11 +105,17 @@ app.post('/api/sorteo', async (req, res) => {
     try {
         // Recibimos la configuración desde el Frontend
         const { title, budget, date, dryRun } = req.body;
+
+        // --- CAMBIO AQUÍ ---
+        // 1. Obtenemos contactos y forzamos un array vacío si falla (|| [])
+        const allContacts = getContacts() || []; 
         
-        // Leemos los contactos actuales
-        const allContacts = getContacts();
-        console.log(`📋 Total contactos en el sistema: ${allContacts}`);
-        // Filtramos solo los que están marcados como "active" (juegan)
+        console.log(`📋 Estado de allContacts:`, typeof allContacts, Array.isArray(allContacts) ? `Array(${allContacts.length})` : allContacts);
+
+        // 2. Validación de seguridad extra antes del filter
+        if (!Array.isArray(allContacts)) {
+            throw new Error("Error interno: La lista de contactos no es válida (no es un array).");
+        }
         // Nota: Añadiremos la propiedad 'active' en el frontend y JSON
         const participants = allContacts.filter(c => c.active === true).map(p => ({
             name: p.nickname,
