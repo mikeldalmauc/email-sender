@@ -80,7 +80,7 @@ app.post('/api/sorteo', async (req, res) => {
         
         // Leemos los contactos actuales
         const allContacts = getContacts();
-
+        console.log(`📋 Total contactos en el sistema: ${allContacts}`);
         // Filtramos solo los que están marcados como "active" (juegan)
         // Nota: Añadiremos la propiedad 'active' en el frontend y JSON
         const participants = allContacts.filter(c => c.active === true).map(p => ({
