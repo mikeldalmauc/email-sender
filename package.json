@@ -1,0 +1,19 @@
+{
+    "name": "simple-mailer",
+    "version": "1.0.0",
+    "description": "API mínima para enviar correos usando Node.js, Express y nodemailer",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js",
+        "dev": "nodemon index.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2",
+        "nodemailer": "^6.9.4",
+        "dotenv": "^16.3.1",
+        "body-parser": "^1.20.2"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.22"
+    }
+}
