@@ -1,15 +1,28 @@
-version: '3.8'
 services:
-  mailer:
+  # Contenedor Backend (Node.js)
+  app:
     build: .
-    image: simple-mailer:latest
-    restart: unless-stopped
-    env_file: .env
-    ports:
-    - "3000:3000"
+    container_name: kuskas_backend
+    restart: always
+    expose:
+      - "3000" # Ya no exponemos el 3000 al exterior, solo a la red interna docker
     volumes:
-    - ./:/app
-    - /app/node_modules
-    command: npm run dev
+      - ./:/app
+      - /app/node_modules
+    environment:
+      - PORT=3000
 
-  
+  # Contenedor Frontend/Proxy (Nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: kuskas_nginx
+    restart: always
+    ports:
+      - "80:80" # Accederás por http://localhost directamente (sin puerto :3000)
+    volumes:
+      # Montamos tu carpeta public local para que Nginx sirva los archivos
+      - ./public:/usr/share/nginx/html:ro 
+      # Montamos la configuración que acabamos de crear
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app

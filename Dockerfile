@@ -1,20 +1,22 @@
 FROM node:18-alpine
 
+# Crear directorio de trabajo
 WORKDIR /app
 
+# Copiar archivos de dependencias primero (para aprovechar la caché de Docker)
+COPY package.json ./
 
-# instalar dependencias
-COPY package.json package-lock.json* ./
+# Instalar dependencias (quitamos --silent para ver errores si los hay)
+RUN npm install
 
+# Instalar nodemon globalmente para desarrollo (opcional, pero útil)
 RUN npm install -g nodemon
 
-RUN npm ci --silent || npm install --silent
-
-# copiar código
+# Copiar el resto del código
 COPY . .
-ENV NODE_ENV=production
-# ENV NODE_ENV=development
+
+# Exponer el puerto
 EXPOSE 3000
 
-# CMD ["node", "src/server.js"]
-CMD ["npm", "run", "dev"]
+# Comando por defecto
+CMD ["node", "server.js"]
