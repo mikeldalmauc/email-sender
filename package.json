@@ -2,7 +2,7 @@
     "name": "simple-mailer",
     "version": "1.0.0",
     "description": "API mínima para enviar correos usando Node.js, Express y nodemailer",
-    "main": "server.js",
+    "main": "src/server.js",
     "scripts": {
         "start": "node src/server.js",
         "dev": "nodemon -L src/server.js"

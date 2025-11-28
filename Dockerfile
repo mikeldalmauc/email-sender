@@ -4,7 +4,7 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copiar archivos de dependencias primero (para aprovechar la caché de Docker)
-COPY package.json ./
+COPY package.json package.json
 
 # Instalar dependencias (quitamos --silent para ver errores si los hay)
 RUN npm install
@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 3000
 
 # Comando por defecto
-CMD ["node", "server.js"]
+CMD ["node", "src/server.js"]
