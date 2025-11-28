@@ -25,17 +25,52 @@ app.use(express.static('public')); // Servirá el HTML en la carpeta 'public'
 // --- FUNCIONES AUXILIARES PARA EL JSON ---
 
 // Leer contactos del disco
+// Leer contactos del disco
 const getContacts = () => {
     try {
-        if (!fs.existsSync(DATA_FILE)) return [];
+        console.log(`📂 Intentando leer archivo: ${DATA_FILE}`);
+        
+        if (!fs.existsSync(DATA_FILE)) {
+            console.warn("⚠️ El archivo no existe. Devolviendo array vacío.");
+            return [];
+        }
+
         const data = fs.readFileSync(DATA_FILE, 'utf8');
-        return JSON.parse(data);
+        
+        // LOG DE DEBUG: Ver qué hemos leído exactamente
+        console.log(`📄 Contenido raw (primeros 50 chars): ${data.substring(0, 50)}...`);
+
+        if (!data) {
+            console.warn("⚠️ El archivo está vacío.");
+            return [];
+        }
+
+        const parsedData = JSON.parse(data);
+
+        // LOG DE DEBUG: Ver qué tipo de dato es
+        console.log(`🧩 Tipo de dato parseado: ${typeof parsedData}`);
+        console.log(`❓ ¿Es Array directo?: ${Array.isArray(parsedData)}`);
+
+        // CASO 1: Es la estructura { "contacts": [...] }
+        if (parsedData.contacts && Array.isArray(parsedData.contacts)) {
+            console.log(`✅ Estructura {contacts: [...]} detectada. Extrayendo ${parsedData.contacts.length} elementos.`);
+            return parsedData.contacts; // <--- AQUÍ ESTÁ LA SOLUCIÓN
+        }
+
+        // CASO 2: Es un Array directo [...]
+        if (Array.isArray(parsedData)) {
+            console.log(`✅ Estructura Array directa detectada.`);
+            return parsedData;
+        }
+
+        console.error("❌ El JSON no tiene formato válido (ni array ni objeto con propiedad contacts).");
+        return [];
+
     } catch (error) {
-        console.error("Error leyendo contactos:", error);
+        console.error("❌ Error CRÍTICO leyendo contactos:", error);
         return [];
     }
 };
-
 // Guardar contactos en el disco
 const saveContacts = (contacts) => {
 
