@@ -16,5 +16,5 @@ ENV NODE_ENV=production
 # ENV NODE_ENV=development
 EXPOSE 3000
 
-# CMD ["node", "src/index.js"]
+# CMD ["node", "src/server.js"]
 CMD ["npm", "run", "dev"]

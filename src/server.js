@@ -1,62 +1,150 @@
 require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
+const fs = require('fs');
+const path = require('path');
+const cors = require('cors');
 
-// Importamos nuestros módulos
+// --- IMPORTAR TUS MÓDULOS EXISTENTES ---
+// Asegúrate de que estos archivos existen o ajusta la ruta
 const { generateMatches } = require('./matcher');
-// const { getHtmlTemplate } = require('./emailTemplate');
 const { getHtmlTemplate } = require('./emailTemplate_kuskas');
 const { sendEmail } = require('./mailer');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configuración
+const DATA_FILE = path.join('data', 'contacts.json');
+console.log(`Usando archivo de datos: ${DATA_FILE}`);
+// Middlewares
+app.use(cors());
 app.use(bodyParser.json());
+app.use(express.static('public')); // Servirá el HTML en la carpeta 'public'
 
-app.post('/sorteo', async (req, res) => {
+// --- FUNCIONES AUXILIARES PARA EL JSON ---
+
+// Leer contactos del disco
+const getContacts = () => {
     try {
-        const { participants, budget, date, title, dryRun } = req.body;
+        if (!fs.existsSync(DATA_FILE)) return [];
+        const data = fs.readFileSync(DATA_FILE, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error("Error leyendo contactos:", error);
+        return [];
+    }
+};
 
-        // 1. Validaciones
-        if (!participants || !Array.isArray(participants) || participants.length < 2) {
-            return res.status(400).json({ error: 'Se necesitan al menos 2 participantes.' });
+// Guardar contactos en el disco
+const saveContacts = (contacts) => {
+
+    let addAttr = cts => `{"contacts":${JSON.stringify(cts, null, 4)}}`
+    
+    try {
+        fs.writeFileSync(DATA_FILE, addAttr(contacts));
+        return true;
+    } catch (error) {
+        console.error("Error guardando contactos:", error);
+        return false;
+    }
+};
+
+// --- API ENDPOINTS ---
+
+// 1. Obtener todos los contactos
+app.get('/api/contacts', (req, res) => {
+    const contacts = getContacts();
+    res.json(contacts);
+});
+
+// 2. Actualizar la lista de contactos (Añadir, Editar, Borrar, Cambiar estado)
+app.post('/api/contacts', (req, res) => {
+    const newContacts = req.body;
+    if (!Array.isArray(newContacts)) {
+        return res.status(400).json({ error: 'Formato inválido' });
+    }
+    
+    if (saveContacts(newContacts)) {
+        res.json({ ok: true, message: 'Lista de contactos actualizada' });
+    } else {
+        res.status(500).json({ error: 'No se pudo guardar en el disco' });
+    }
+});
+
+// 3. Ejecutar el Sorteo (Lógica unificada)
+app.post('/api/sorteo', async (req, res) => {
+    try {
+        // Recibimos la configuración desde el Frontend
+        const { title, budget, date, dryRun } = req.body;
+        
+        // Leemos los contactos actuales
+        const allContacts = getContacts();
+
+        // Filtramos solo los que están marcados como "active" (juegan)
+        // Nota: Añadiremos la propiedad 'active' en el frontend y JSON
+        const participants = allContacts.filter(c => c.active === true).map(p => ({
+            name: p.nickname,
+            email: p.email,
+            photo: p.photo
+        }));
+
+        console.log(`🚀 Iniciando Sorteo: ${title}`);
+        console.log(`👥 Participantes activos: ${participants.length}`);
+        console.log(`🔧 Modo: ${dryRun ? 'DRY RUN (Simulacro)' : 'PRODUCCIÓN (Envíos reales)'}`);
+
+        // Validaciones
+        if (participants.length < 2) {
+            return res.status(400).json({ error: 'Se necesitan al menos 2 participantes activos.' });
         }
 
-        // 2. Generar parejas (Lógica)
+        // Generar parejas
         const matches = generateMatches(participants);
-        console.log(`Sorteo generado para ${matches.length} personas.`);
+        
+        // Logs para el frontend
+        let logs = [];
+        logs.push(`✅ Se han generado ${matches.length} parejas.`);
 
-        // 3. Preparar envíos (Orquestación)
+        // Enviar correos
         const emailPromises = matches.map(match => {
             const { giver, receiver } = match;
             
-            // Generar HTML
-            const htmlContent = getHtmlTemplate(giver.name, receiver.name, title, budget, date);
+            const htmlContent = getHtmlTemplate(giver.name, receiver.name, receiver.photo, title, budget, date);
             const textContent = `Hola ${giver.name}, tu amigo invisible es ${receiver.name}.`;
 
-            // Enviar (o simular si dryRun es true)
+            // Simulamos o enviamos
             return sendEmail({
                 to: giver.email,
-                subject: ` ${giver.name}, Tu Amigo Invisible: ${title}`,
+                subject: `${giver.name}, Tu Amigo Invisible: ${title}`,
                 html: htmlContent,
                 text: textContent,
-                isDryRun: dryRun // Pasamos el flag
+                isDryRun: dryRun
+            }).then(() => {
+                const status = dryRun ? '[SIMULADO]' : '[ENVIADO]';
+                logs.push(`${status} Correo para ${giver.name} -> Le toca a: ${receiver.name}`);
+            }).catch(e => {
+                logs.push(`❌ ERROR enviando a ${giver.name}: ${e.message}`);
+                throw e; // Re-lanzar para que Promise.all lo detecte si queremos parar, o manejarlo
             });
         });
 
-        // 4. Esperar resultados
-        await Promise.all(emailPromises);
+        await Promise.allSettled(emailPromises);
 
         return res.json({ 
             ok: true, 
-            message: dryRun ? 'Simulacro completado (Ver logs)' : 'Correos enviados correctamente',
-            matches_count: matches.length,
-            mode: dryRun ? 'development/dry-run' : 'production'
+            message: dryRun ? 'Simulacro finalizado' : 'Correos enviados',
+            logs: logs
         });
 
     } catch (err) {
-        console.error('Error en el proceso:', err);
+        console.error('Error crítico:', err);
         return res.status(500).json({ error: err.message });
     }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`API modular escuchando en http://0.0.0.0:${port}`));
+app.listen(PORT, () => {
+    console.log(`\n---------------------------------------------------`);
+    console.log(`🎁 AMIGO INVISIBLE APP`);
+    console.log(`🌐 Abre tu navegador en: http://localhost:${PORT}`);
+    console.log(`---------------------------------------------------\n`);
+});

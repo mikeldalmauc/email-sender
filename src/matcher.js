@@ -11,25 +11,25 @@ function shuffle(array) {
 }
 
 function generateMatches(participants) {
-    // Clonamos para no mutar el original
-    let givers = [...participants];
-    let receivers = [...participants];
-    let isValid = false;
-    let attempts = 0;
-
-    // Intentamos mezclar hasta que nadie coincida (con límite de seguridad)
-    while (!isValid && attempts < 100) {
-        shuffle(receivers);
-        isValid = givers.every((giver, index) => giver.email !== receivers[index].email);
-        attempts++;
+    if (participants.length < 2) {
+        throw new Error("Se necesitan al menos 2 participantes.");
     }
 
-    if (!isValid) throw new Error("No se pudo generar una combinación válida (posiblemente muy pocos participantes).");
+    // 1. Mezclamos el array original (Pool)
+    // Usamos spread [...] para crear una copia y no mutar el input original
+    const pool = shuffle([...participants]);
 
-    return givers.map((giver, index) => ({
-        giver: giver,
-        receiver: receivers[index]
-    }));
+    // 2. Asignamos en cadena (Circular Shift)
+    return pool.map((giver, index) => {
+        // El receptor es el siguiente en la lista.
+        // Si es el último, el receptor es el primero (índice 0).
+        const receiverIndex = (index + 1) % pool.length;
+        
+        return {
+            giver: giver,
+            receiver: pool[receiverIndex]
+        };
+    });
 }
 
 module.exports = { generateMatches };

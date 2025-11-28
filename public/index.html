@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Amigo Invisible</title>
+    <!-- Tailwind CSS para estilos rápidos -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Iconos -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #10B981; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans">
+
+    <div class="container mx-auto px-4 py-8 max-w-5xl">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm">
+            <div>
+                <h1 class="text-3xl font-bold text-indigo-600"><i class="fa-solid fa-gift mr-2"></i>Amigo Invisible Manager</h1>
+                <p class="text-slate-500 text-sm mt-1">Configura los participantes y lanza el sorteo.</p>
+            </div>
+            <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition shadow">
+                <i class="fa-solid fa-user-plus mr-2"></i>Nuevo Contacto
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Columna Izquierda: Configuración y Ejecución -->
+            <div class="lg:col-span-1 space-y-6">
+                
+                <!-- Configuración del Evento -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h2 class="text-xl font-bold mb-4 border-b pb-2">Configuración</h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase">Título del Email</label>
+                            <input type="text" id="confTitle" value="Amigo Invisible 2025" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase">Presupuesto</label>
+                            <input type="text" id="confBudget" value="20 Euros" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase">Fecha Entrega</label>
+                            <input type="text" id="confDate" value="25 de Diciembre" class="w-full mt-1 p-2 border rounded focus:ring-2 focus:ring-indigo-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel de Control -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-amber-400">
+                    <h2 class="text-xl font-bold mb-4">Panel de Control</h2>
+                    
+                    <div class="flex items-center justify-between mb-4 bg-amber-50 p-3 rounded">
+                        <span class="font-medium text-amber-800 flex items-center">
+                            <i class="fa-solid fa-flask mr-2"></i> Dry Run (Simulacro)
+                        </span>
+                        <label class="switch">
+                            <input type="checkbox" id="dryRunToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-500 mb-6">
+                        Si está activado, <strong>NO</strong> se enviarán correos reales, solo se mostrará el resultado en el log.
+                    </p>
+
+                    <button onclick="runSorteo()" id="btnRun" class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg transform transition active:scale-95 flex justify-center items-center">
+                        <i class="fa-solid fa-paper-plane mr-2"></i> EJECUTAR SORTEO
+                    </button>
+                </div>
+
+                <!-- Consola de Logs -->
+                <div class="bg-slate-900 text-green-400 p-4 rounded-xl shadow-inner h-64 overflow-y-auto font-mono text-xs" id="consoleLogs">
+                    <p class="text-slate-500">> Esperando comandos...</p>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Lista de Contactos -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-xl shadow-sm min-h-[600px]">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold">Participantes <span id="countBadge" class="ml-2 bg-indigo-100 text-indigo-600 text-sm px-2 py-1 rounded-full">0</span></h2>
+                        <input type="text" id="searchBox" placeholder="Buscar..." class="p-2 border rounded text-sm w-64" onkeyup="renderContacts()">
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 text-xs border-b uppercase">
+                                    <th class="p-3">Estado</th>
+                                    <th class="p-3">Jugador</th>
+                                    <th class="p-3">Email</th>
+                                    <th class="p-3 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contactsList">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nuevo/Editar Contacto -->
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-96 p-6 transform transition-all scale-100">
+            <h3 class="text-lg font-bold mb-4 text-slate-700">Editar Contacto</h3>
+            <input type="hidden" id="editId">
+            <div class="space-y-3">
+                <input type="text" id="inputNick" placeholder="Nickname (Ej: Etxe)" class="w-full p-2 border rounded">
+                <input type="email" id="inputEmail" placeholder="Email" class="w-full p-2 border rounded">
+                <input type="text" id="inputPhoto" placeholder="Nombre foto (Ej: etxe.png)" class="w-full p-2 border rounded">
+            </div>
+            <div class="mt-6 flex justify-end space-x-2">
+                <button onclick="closeModal()" class="px-4 py-2 text-slate-500 hover:text-slate-700">Cancelar</button>
+                <button onclick="saveContact()" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let contacts = [];
+        
+        let server_address = 'http://localhost:3000'
+        // --- INICIALIZACIÓN ---
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchContacts();
+        });
+
+        // --- API CALLS ---
+        async function fetchContacts() {
+            try {
+                const res = await fetch(server_address + '/api/contacts');
+                contacts = (await res.json()).contacts;
+                renderContacts();
+            } catch (err) {
+                log("Error cargando contactos: " + err.message, 'error');
+            }
+        }
+
+        async function updateServerContacts() {
+            try {
+                const res = await fetch(server_address + '/api/contacts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' ,"active": false
+    },
+                    body: JSON.stringify(contacts)
+                });
+                const data = await res.json();
+                if(!data.ok) throw new Error("Error guardando");
+                console.log("Contactos sincronizados");
+            } catch (err) {
+                log("Error guardando cambios: " + err.message, 'error');
+            }
+        }
+
+        async function runSorteo() {
+            const btn = document.getElementById('btnRun');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Procesando...';
+            
+            // Limpiar consola
+            document.getElementById('consoleLogs').innerHTML = '<p class="text-slate-500">> Iniciando proceso...</p>';
+
+            const payload = {
+                title: document.getElementById('confTitle').value,
+                budget: document.getElementById('confBudget').value,
+                date: document.getElementById('confDate').value,
+                dryRun: document.getElementById('dryRunToggle').checked
+            };
+
+            try {
+                const res = await fetch(server_address +'/api/sorteo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' ,"active": false
+    },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                
+                if (data.logs) {
+                    data.logs.forEach(l => log(l));
+                }
+                
+                if (!data.ok) {
+                    log("❌ ERROR DEL SERVIDOR: " + data.error, 'error');
+                } else {
+                    log("🏁 PROCESO FINALIZADO.", 'success');
+                }
+
+            } catch (err) {
+                log("❌ Error de conexión: " + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane mr-2"></i> EJECUTAR SORTEO';
+            }
+        }
+
+        // --- RENDERIZADO ---
+        function renderContacts() {
+            const list = document.getElementById('contactsList');
+            const search = document.getElementById('searchBox').value.toLowerCase();
+            const activeCount = contacts.filter(c => c.active).length;
+            
+            document.getElementById('countBadge').innerText = `${activeCount} / ${contacts.length}`;
+            list.innerHTML = '';
+
+            contacts.forEach((contact, index) => {
+                // Filtro búsqueda
+                if (!contact.nickname.toLowerCase().includes(search) && !contact.email.toLowerCase().includes(search)) return;
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-slate-50 transition";
+                
+                // Opacidad si no juega
+                const opacityClass = contact.active ? '' : 'opacity-50 bg-slate-50';
+
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <label class="switch scale-75">
+                            <input type="checkbox" ${contact.active ? 'checked' : ''} onchange="toggleActive(${index})">
+                            <span class="slider"></span>
+                        </label>
+                    </td>
+                    <td class="p-3 ${opacityClass}">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold mr-3 text-xs overflow-hidden">
+                                ${contact.photo ? `<img src="kuskas/${contact.photo}" onerror="this.style.display='none'" class="w-full h-full object-cover">` : contact.nickname.substring(0,2).toUpperCase()}
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-700">${contact.nickname}</div>
+                                <div class="text-[10px] text-slate-400 uppercase font-mono tracking-wide">${contact.id}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-3 ${opacityClass} text-sm text-slate-600">${contact.email}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="editContact(${index})" class="text-slate-400 hover:text-indigo-600 mx-1"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteContact(${index})" class="text-slate-400 hover:text-red-600 mx-1"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+        }
+
+        // --- LÓGICA DE CONTACTOS ---
+        function toggleActive(index) {
+            contacts[index].active = !contacts[index].active;
+            updateServerContacts();
+            renderContacts();
+        }
+
+        function deleteContact(index) {
+            if(confirm(`¿Eliminar a ${contacts[index].nickname}?`)) {
+                contacts.splice(index, 1);
+                updateServerContacts();
+                renderContacts();
+            }
+        }
+
+        function editContact(index) {
+            const c = contacts[index];
+            document.getElementById('editId').value = index; // Usamos el índice como ID temporal para editar
+            document.getElementById('inputNick').value = c.nickname;
+            document.getElementById('inputEmail').value = c.email;
+            document.getElementById('inputPhoto').value = c.photo || '';
+            openModal();
+        }
+
+        // --- MODAL ---
+        function openModal() {
+            document.getElementById('modal').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('editId').value = '';
+            document.getElementById('inputNick').value = '';
+            document.getElementById('inputEmail').value = '';
+            document.getElementById('inputPhoto').value = '';
+        }
+
+        function saveContact() {
+            const idx = document.getElementById('editId').value;
+            const nick = document.getElementById('inputNick').value;
+            const email = document.getElementById('inputEmail').value;
+            const photo = document.getElementById('inputPhoto').value;
+
+            if (!nick || !email) return alert("Nombre y Email obligatorios");
+
+            if (idx === '') {
+                // Nuevo
+                contacts.push({
+                    id: nick.toLowerCase().replace(/\s/g, ''),
+                    nickname: nick,
+                    email: email,
+                    photo: photo,
+                    active: true
+                });
+            } else {
+                // Editar
+                contacts[idx].nickname = nick;
+                contacts[idx].email = email;
+                contacts[idx].photo = photo;
+            }
+
+            updateServerContacts();
+            closeModal();
+            renderContacts();
+        }
+
+        // --- UTILIDADES ---
+        function log(msg, type = 'info') {
+            const consoleDiv = document.getElementById('consoleLogs');
+            const p = document.createElement('p');
+            p.className = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-slate-300');
+            p.innerText = `> ${msg}`;
+            consoleDiv.appendChild(p);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+    </script>
+</body>
+</html>

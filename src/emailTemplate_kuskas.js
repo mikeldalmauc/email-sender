@@ -33,7 +33,7 @@ const getHtmlTemplate = (giverName, receiverName, receiverPhoto, title, budget, 
                         
                         <tr>
                             <td style="background-color: ${colors.primaryBlue}; padding: 30px; text-align: center; border-bottom: 4px solid ${colors.accentOrange};">
-                                <img src="https://mikeldalmau.com/kuskas/${logoUrl}" alt="KUS KAS" style="max-width: 150px; height: auto; display: block; margin: 0 auto;">
+                                <img src="${logoUrl}" alt="KUS KAS" style="max-width: 150px; height: auto; display: block; margin: 0 auto;">
                                 <h2 style="color: #ffffff; margin-top: 15px; margin-bottom: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 2px;">${title || 'Amigo Invisible'}</h2>
                             </td>
                         </tr>
@@ -49,7 +49,7 @@ const getHtmlTemplate = (giverName, receiverName, receiverPhoto, title, budget, 
 
                                 <div style="background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); border: 2px dashed ${colors.accentOrange}; border-radius: 12px; padding: 25px; margin: 30px 0; text-align: center;">
                                     
-                                    <img src="${photoUrl}" alt="${receiverName}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid ${colors.accentOrange}; display: block; margin: 0 auto 15px auto;">
+                                    <img src="https://mikeldalmau.com/kuskas/${photoUrl}" alt="${receiverName}" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid ${colors.accentOrange}; display: block; margin: 0 auto 15px auto;">
                                     
                                     <h1 style="color: ${colors.primaryBlue}; margin: 0; font-size: 28px; font-weight: 800;">${receiverName}</h1>
                                 </div>
